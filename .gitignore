@@ -1,0 +1,81 @@
+# === Python ===
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# === Environnements virtuels ===
+.venv/
+venv/
+env/
+ENV/
+
+# === UV ===
+# uv.lock est versionné (bonne pratique reproductibilité)
+
+# === IDE ===
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# === Tests & Coverage ===
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+
+# === Données (volumineuses, non versionnées) ===
+data/raw/
+data/processed/
+data/interim/
+*.csv.gz
+*.parquet
+
+# Sauf samples (petits échantillons pour tests)
+!data/samples/
+
+# === Modèles volumineux ===
+# On versionne xgboost_champion.pkl si < 100MB
+# Sinon utiliser Git LFS
+models/*.h5
+models/*.bin
+models/checkpoints/
+
+# === Secrets & config locale ===
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# === Logs & runtime ===
+*.log
+logs/
+*.pid
+
+# === Docker ===
+.dockerignore
+
+# === MLflow (si jamais utilisé en local) ===
+mlruns/
+mlflow.db
+
+# === Streamlit ===
+.streamlit/secrets.toml
+
+# === OS ===
+Thumbs.db
+desktop.ini
+
+# === Jupyter ===
+.ipynb_checkpoints/
+*.ipynb_checkpoints
