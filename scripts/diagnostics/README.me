@@ -1,0 +1,60 @@
+# Scripts diagnostic — Étape 2
+
+Scripts d'investigation menés pour identifier et valider le modèle champion
+du Projet 6 avant extraction vers le Projet 8. Conservés à des fins de
+traçabilité MLOps et de reproductibilité.
+
+## Contexte
+
+Les coordonnées initiales du modèle champion (mémoire personnelle) pointaient
+vers le mauvais run MLflow. Cette investigation a permis de :
+1. Identifier le vrai run champion via lecture directe SQLite
+2. Diagnostiquer un mismatch de features (colonnes parasites)
+3. Valider la reproduction exacte du notebook de soutenance P6
+
+## Scripts
+
+### `find_champion_model.py`
+Lit la base SQLite MLflow (sans dépendance MLflow) pour récupérer :
+- Run UUID, name, status, experiment_id
+- Métriques (F3, threshold) et tags
+- Model ID lié via `logged_models.source_run_id` (MLflow ≥ 2.9)
+- Path absolu reconstruit du `model.pkl`
+
+**Lancement** :
+```powershell
+uv run python scripts/diagnostics/find_champion_model.py
+```
+
+### `diagnose_features.py`
+Compare les `feature_names_in_` du Pipeline sklearn avec les colonnes du
+dataset source pour détecter les mismatches. A permis d'identifier
+`SK_ID_CURR` et `Unnamed: 0` comme colonnes parasites du parquet P6.
+
+**Lancement** :
+```powershell
+uv run python scripts/diagnostics/diagnose_features.py
+```
+
+### `sanity_check_test.py`
+Reproduit les prédictions du notebook P6 sur `df_test_final.parquet` pour
+valider que le `.pkl` extrait correspond bien au modèle de soutenance.
+
+**Critères de validation** :
+- Taux prédictions positives ≈ 0.388 (notebook : 0.3880)
+- Moyenne des probas ≈ 0.312 (notebook : 0.3119)
+
+**Lancement** :
+```powershell
+uv run python scripts/diagnostics/sanity_check_test.py
+```
+
+## Résultat de l'investigation
+
+| Aspect | Avant | Après |
+|---|---|---|
+| Run UUID | `c720deed89b94ef09bd388e12f7a9a19` | `a3ff1e12347c4bfc9b484ac36916eb14` |
+| Model ID | `m-79423b54dd5e4fa0b872fd1e8dc0c507` | `m-30fce0016ff849fe863eba9abcdce510` |
+| F3-score | 0.5580 | 0.5583 |
+| Seuil | 0.3999 | 0.3338 |
+| Sanity check vs notebook P6 | ❌ | ✅ (0.3876 vs 0.3880) |
