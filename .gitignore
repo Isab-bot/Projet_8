@@ -39,8 +39,9 @@ data/interim/
 *.csv.gz
 *.parquet
 
-# Sauf samples (petits échantillons pour tests)
+# Exceptions : fichiers versionnés malgré les règles ci-dessus
 !data/samples/
+!data/reference_data.parquet
 
 # === Modèles volumineux ===
 # On versionne xgboost_champion.pkl si < 100MB
@@ -62,8 +63,6 @@ secrets/
 logs/
 *.pid
 
-# === Docker ===
-.dockerignore
 
 # === MLflow (si jamais utilisé en local) ===
 mlruns/
