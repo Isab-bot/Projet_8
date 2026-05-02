@@ -9,9 +9,15 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
-from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Request, status
 
 from api.config import API_DESCRIPTION, API_TITLE, API_VERSION
+from api.exceptions import (
+    InternalErrorResponse,
+    ServiceUnavailableResponse,
+    ValidationErrorResponse,
+    register_exception_handlers,
+)
 from api.predictor import ModelNotLoadedError, Predictor
 from api.schemas import HealthResponse, PredictionInput, PredictionOutput
 
@@ -42,6 +48,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Enregistrement des handlers d'exceptions custom
+register_exception_handlers(app)
+
 
 # --- Dépendances -----------------------------------------------------------
 
@@ -53,9 +62,8 @@ def get_predictor(request: Request) -> Predictor:
     """
     predictor = getattr(request.app.state, "predictor", None)
     if predictor is None:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Le modèle n'est pas chargé. Réessayez dans quelques instants.",
+        raise ModelNotLoadedError(
+            "Le modèle n'est pas chargé. Réessayez dans quelques instants."
         )
     return predictor
 
@@ -94,6 +102,20 @@ async def health(request: Request) -> HealthResponse:
     response_model=PredictionOutput,
     summary="Prédit la probabilité de défaut de crédit",
     tags=["prediction"],
+    responses={
+        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+            "model": ValidationErrorResponse,
+            "description": "Erreur de validation des features d'entrée.",
+        },
+        status.HTTP_503_SERVICE_UNAVAILABLE: {
+            "model": ServiceUnavailableResponse,
+            "description": "Modèle non chargé.",
+        },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "model": InternalErrorResponse,
+            "description": "Erreur interne du serveur.",
+        },
+    },
 )
 async def predict(
     input_data: PredictionInput,
@@ -105,16 +127,4 @@ async def predict(
     Les features avec lambda dans leur nom (ex: `BUREAU_CREDIT_ACTIVE_<lambda>`)
     doivent être envoyées avec leur nom d'origine.
     """
-    try:
-        return predictor.predict(input_data)
-    except ModelNotLoadedError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-    except Exception as exc:
-        # Filet de sécurité : toute autre erreur côté pipeline -> 500
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de la prédiction: {exc}",
-        ) from exc
+    return predictor.predict(input_data)
