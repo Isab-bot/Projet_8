@@ -38,6 +38,10 @@ data/processed/
 data/interim/
 *.csv.gz
 *.parquet
+# Bases SQLite locales (créées en runtime, jamais versionnées)
+data/predictions.db
+data/sample_request.json
+data/*.db
 
 # Exceptions : fichiers versionnés malgré les règles ci-dessus
 !data/samples/
