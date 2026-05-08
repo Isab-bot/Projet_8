@@ -15,6 +15,9 @@ from fastapi import Depends, FastAPI, Request, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from alembic import command as alembic_command
+from alembic.config import Config as AlembicConfig
+
 from api.config import API_DESCRIPTION, API_TITLE, API_VERSION
 from api.database import get_db
 from api.db_service import log_prediction
@@ -34,13 +37,19 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Charge le modèle au démarrage et libère les ressources à l'arrêt.
+    """Démarrage : applique les migrations DB puis charge le modèle.
 
-    Le Predictor est instancié une seule fois et stocké dans app.state pour
-    être réutilisé par toutes les requêtes (point de vigilance MLOps :
-    pas de chargement par requête).
+    1. Alembic upgrade head : crée/met à jour la table predictions si besoin.
+    2. Predictor() : charge le pipeline XGBoost en mémoire (une seule fois).
+
+    Idempotent : si la migration est déjà appliquée, Alembic ne fait rien.
     """
     # STARTUP
+    logger.info("Application des migrations Alembic...")
+    alembic_cfg = AlembicConfig("alembic.ini")
+    alembic_command.upgrade(alembic_cfg, "head")
+    logger.info("Migrations appliquées.")
+
     app.state.predictor = Predictor()
     yield
     # SHUTDOWN
