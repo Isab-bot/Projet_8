@@ -6,12 +6,18 @@ et les endpoints exposés (/health, /predict).
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request, status
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from api.config import API_DESCRIPTION, API_TITLE, API_VERSION
+from api.database import get_db
+from api.db_service import log_prediction
 from api.exceptions import (
     InternalErrorResponse,
     ServiceUnavailableResponse,
@@ -20,6 +26,8 @@ from api.exceptions import (
 )
 from api.predictor import ModelNotLoadedError, Predictor
 from api.schemas import HealthResponse, PredictionInput, PredictionOutput
+
+logger = logging.getLogger(__name__)
 
 
 # --- Cycle de vie de l'application -----------------------------------------
@@ -117,14 +125,44 @@ async def health(request: Request) -> HealthResponse:
         },
     },
 )
-async def predict(
+def predict(
     input_data: PredictionInput,
     predictor: Predictor = Depends(get_predictor),
+    db: Session = Depends(get_db),
 ) -> PredictionOutput:
     """Calcule la probabilité de défaut et la décision pour un dossier crédit.
 
     L'input doit contenir les 326 features attendues par le pipeline.
     Les features avec lambda dans leur nom (ex: `BUREAU_CREDIT_ACTIVE_<lambda>`)
     doivent être envoyées avec leur nom d'origine.
+
+    Le résultat est persisté en base de données pour permettre le monitoring
+    de drift à l'étape ultérieure (Evidently). En cas d'échec de persistance,
+    la prédiction est tout de même retournée au client (politique fail-open :
+    l'instrumentation ne doit pas casser le service observé).
     """
-    return predictor.predict(input_data)
+    request_id = str(uuid4())
+
+    # Calcul de la prédiction (peut lever : 500 si modèle planté)
+    output = predictor.predict(input_data)
+    output.request_id = request_id
+
+    # Persistance fail-open : on log l'erreur mais on retourne quand même la prédiction
+    try:
+        log_prediction(
+            db=db,
+            request_id=request_id,
+            input_data=input_data,
+            proba=output.probability,
+            decision=output.decision,
+            model_version=API_VERSION,
+            threshold=output.threshold,
+        )
+    except SQLAlchemyError:
+        logger.error(
+            "Échec de persistance de la prédiction en base",
+            exc_info=True,
+            extra={"request_id": request_id},
+        )
+
+    return output

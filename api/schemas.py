@@ -344,10 +344,14 @@ class PredictionInput(BaseModel):
 
 class PredictionOutput(BaseModel):
     """Sortie du endpoint /predict."""
-
+    request_id: str = Field(
+        default="",
+        description="UUID unique de la requête, utilisable pour corréler la "
+                    "réponse client avec les logs serveur et les lignes en base.",
+    )
     probability: float = Field(
         ..., ge=0.0, le=1.0,
-        description="Probabilité prédite de défaut de crédit (classe 1)."
+        description="..."
     )
     decision: int = Field(
         ..., ge=0, le=1,
