@@ -5,6 +5,7 @@ magic numbers dispersés dans le code et faciliter la maintenance.
 """
 
 from pathlib import Path
+import os
 
 # --- Chemins ---
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -23,3 +24,13 @@ API_DESCRIPTION = (
     "API de scoring crédit basée sur le modèle XGBoost champion "
     "(F3=0.5583) entraîné dans le cadre du Projet 6."
 )
+
+# --- Base de données ---
+# Stratégie : Postgres (Docker local) en dev/prod, SQLite en fallback (CI/HF Spaces).
+# DATABASE_URL prend priorité si définie, sinon fallback SQLite automatique.
+
+
+DEFAULT_SQLITE_PATH = PROJECT_ROOT / "data" / "predictions.db"
+DEFAULT_DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}"
+
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
