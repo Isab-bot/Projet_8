@@ -3,12 +3,12 @@
 ⚠️ FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER À LA MAIN.
 Régénérer via : uv run python scripts/generate_prediction_model.py
 
-Source des features : data/reference_data.parquet
+Source des features : api.schemas.PredictionInput
 Mapping des noms   : api.feature_naming.to_sql_column_name
 """
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, func
+from sqlalchemy import DateTime, Boolean, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from api.database import Base
@@ -27,7 +27,7 @@ class Prediction(Base):
     # --- Identifiants ---
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     request_id: Mapped[str] = mapped_column(
-        String(36), unique=True, index=True, nullable=False,
+        String(length=36), unique=True, index=True, nullable=False,
         comment="UUID de la requête, exposé au client pour traçabilité",
     )
 
@@ -36,11 +36,11 @@ class Prediction(Base):
         DateTime(timezone=True),
         index=True,
         nullable=False,
-        server_default=func.now(),
+        server_default=func.current_timestamp(),
         comment="Horodatage UTC de la prédiction",
     )
     model_version: Mapped[str] = mapped_column(
-        String(32), index=True, nullable=False,
+        String(length=32), index=True, nullable=False,
         comment="Version de l'API/modèle ayant produit la prédiction",
     )
     threshold: Mapped[float] = mapped_column(
@@ -58,52 +58,52 @@ class Prediction(Base):
         comment="Décision binaire (0 ou 1) après application du seuil",
     )
 
-    # --- Features (auto-générées) ---
-    NAME_CONTRACT_TYPE: Mapped[float | None] = mapped_column(Float, nullable=True)
-    CODE_GENDER: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_OWN_CAR: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_OWN_REALTY: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # --- Features (auto-générées depuis schemas.py) ---
+    NAME_CONTRACT_TYPE: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    CODE_GENDER: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    FLAG_OWN_CAR: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    FLAG_OWN_REALTY: Mapped[int | None] = mapped_column(Integer, nullable=True)
     AMT_INCOME_TOTAL: Mapped[float | None] = mapped_column(Float, nullable=True)
     AMT_CREDIT: Mapped[float | None] = mapped_column(Float, nullable=True)
     AMT_ANNUITY: Mapped[float | None] = mapped_column(Float, nullable=True)
-    NAME_FAMILY_STATUS: Mapped[float | None] = mapped_column(Float, nullable=True)
+    NAME_FAMILY_STATUS: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
     REGION_POPULATION_RELATIVE: Mapped[float | None] = mapped_column(Float, nullable=True)
     DAYS_BIRTH: Mapped[float | None] = mapped_column(Float, nullable=True)
     DAYS_EMPLOYED: Mapped[float | None] = mapped_column(Float, nullable=True)
     DAYS_REGISTRATION: Mapped[float | None] = mapped_column(Float, nullable=True)
     DAYS_ID_PUBLISH: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_EMP_PHONE: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_WORK_PHONE: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_PHONE: Mapped[float | None] = mapped_column(Float, nullable=True)
-    CNT_FAM_MEMBERS: Mapped[float | None] = mapped_column(Float, nullable=True)
-    REGION_RATING_CLIENT_W_CITY: Mapped[float | None] = mapped_column(Float, nullable=True)
-    WEEKDAY_APPR_PROCESS_START: Mapped[float | None] = mapped_column(Float, nullable=True)
-    HOUR_APPR_PROCESS_START: Mapped[float | None] = mapped_column(Float, nullable=True)
-    REG_REGION_NOT_LIVE_REGION: Mapped[float | None] = mapped_column(Float, nullable=True)
-    LIVE_REGION_NOT_WORK_REGION: Mapped[float | None] = mapped_column(Float, nullable=True)
-    REG_CITY_NOT_LIVE_CITY: Mapped[float | None] = mapped_column(Float, nullable=True)
-    LIVE_CITY_NOT_WORK_CITY: Mapped[float | None] = mapped_column(Float, nullable=True)
+    FLAG_EMP_PHONE: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    FLAG_WORK_PHONE: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    FLAG_PHONE: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    CNT_FAM_MEMBERS: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    REGION_RATING_CLIENT_W_CITY: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    WEEKDAY_APPR_PROCESS_START: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    HOUR_APPR_PROCESS_START: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    REG_REGION_NOT_LIVE_REGION: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    LIVE_REGION_NOT_WORK_REGION: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    REG_CITY_NOT_LIVE_CITY: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    LIVE_CITY_NOT_WORK_CITY: Mapped[int | None] = mapped_column(Integer, nullable=True)
     EXT_SOURCE_2: Mapped[float | None] = mapped_column(Float, nullable=True)
     EXT_SOURCE_3: Mapped[float | None] = mapped_column(Float, nullable=True)
-    OBS_60_CNT_SOCIAL_CIRCLE: Mapped[float | None] = mapped_column(Float, nullable=True)
-    DEF_60_CNT_SOCIAL_CIRCLE: Mapped[float | None] = mapped_column(Float, nullable=True)
+    OBS_60_CNT_SOCIAL_CIRCLE: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    DEF_60_CNT_SOCIAL_CIRCLE: Mapped[int | None] = mapped_column(Integer, nullable=True)
     DAYS_LAST_PHONE_CHANGE: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_DOCUMENT_3: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_DOCUMENT_6: Mapped[float | None] = mapped_column(Float, nullable=True)
-    FLAG_DOCUMENT_8: Mapped[float | None] = mapped_column(Float, nullable=True)
-    AMT_REQ_CREDIT_BUREAU_MON: Mapped[float | None] = mapped_column(Float, nullable=True)
-    AMT_REQ_CREDIT_BUREAU_QRT: Mapped[float | None] = mapped_column(Float, nullable=True)
-    AMT_REQ_CREDIT_BUREAU_YEAR: Mapped[float | None] = mapped_column(Float, nullable=True)
-    DAYS_EMPLOYED_ANOM: Mapped[float | None] = mapped_column(Float, nullable=True)
+    FLAG_DOCUMENT_3: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    FLAG_DOCUMENT_6: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    FLAG_DOCUMENT_8: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    AMT_REQ_CREDIT_BUREAU_MON: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    AMT_REQ_CREDIT_BUREAU_QRT: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    AMT_REQ_CREDIT_BUREAU_YEAR: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    DAYS_EMPLOYED_ANOM: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     CREDIT_INCOME_PERCENT: Mapped[float | None] = mapped_column(Float, nullable=True)
     ANNUITY_INCOME_PERCENT: Mapped[float | None] = mapped_column(Float, nullable=True)
     CREDIT_TERM: Mapped[float | None] = mapped_column(Float, nullable=True)
-    NAME_HOUSING_TYPE_GRP: Mapped[float | None] = mapped_column(Float, nullable=True)
-    NAME_EDUCATION_TYPE_GRP: Mapped[float | None] = mapped_column(Float, nullable=True)
-    NAME_INCOME_TYPE_GRP: Mapped[float | None] = mapped_column(Float, nullable=True)
-    NAME_TYPE_SUITE_GRP: Mapped[float | None] = mapped_column(Float, nullable=True)
-    ORG_GROUP: Mapped[float | None] = mapped_column(Float, nullable=True)
-    OCCUPATION_TYPE_GRP: Mapped[float | None] = mapped_column(Float, nullable=True)
+    NAME_HOUSING_TYPE_GRP: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    NAME_EDUCATION_TYPE_GRP: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    NAME_INCOME_TYPE_GRP: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    NAME_TYPE_SUITE_GRP: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    ORG_GROUP: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
+    OCCUPATION_TYPE_GRP: Mapped[str | None] = mapped_column(String(length=64), nullable=True)
     BUREAU_DAYS_CREDIT_mean: Mapped[float | None] = mapped_column(Float, nullable=True)
     BUREAU_DAYS_CREDIT_max: Mapped[float | None] = mapped_column(Float, nullable=True)
     BUREAU_DAYS_CREDIT_sum: Mapped[float | None] = mapped_column(Float, nullable=True)

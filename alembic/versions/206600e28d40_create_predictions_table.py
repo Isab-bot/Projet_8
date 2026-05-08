@@ -1,8 +1,8 @@
 """create predictions table
 
-Revision ID: 0e0c066690f4
+Revision ID: 206600e28d40
 Revises: 
-Create Date: 2026-05-08 10:15:53.723932
+Create Date: 2026-05-08 15:33:58.158156
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '0e0c066690f4'
+revision: str = '206600e28d40'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -24,56 +24,56 @@ def upgrade() -> None:
     op.create_table('predictions',
     *[sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('request_id', sa.String(length=36), nullable=False, comment='UUID de la requête, exposé au client pour traçabilité'),
-    sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False, comment='Horodatage UTC de la prédiction'),
+    sa.Column('timestamp', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False, comment='Horodatage UTC de la prédiction'),
     sa.Column('model_version', sa.String(length=32), nullable=False, comment="Version de l'API/modèle ayant produit la prédiction"),
     sa.Column('threshold', sa.Float(), nullable=False, comment='Seuil de décision F3 utilisé (issu du Projet 6)'),
     sa.Column('prediction_proba', sa.Float(), nullable=False, comment='Probabilité prédite par XGBoost (classe 1 = défaut)'),
     sa.Column('prediction', sa.Integer(), nullable=False, comment='Décision binaire (0 ou 1) après application du seuil'),
-    sa.Column('NAME_CONTRACT_TYPE', sa.Float(), nullable=True),
-    sa.Column('CODE_GENDER', sa.Float(), nullable=True),
-    sa.Column('FLAG_OWN_CAR', sa.Float(), nullable=True),
-    sa.Column('FLAG_OWN_REALTY', sa.Float(), nullable=True),
+    sa.Column('NAME_CONTRACT_TYPE', sa.String(length=64), nullable=True),
+    sa.Column('CODE_GENDER', sa.String(length=64), nullable=True),
+    sa.Column('FLAG_OWN_CAR', sa.Integer(), nullable=True),
+    sa.Column('FLAG_OWN_REALTY', sa.Integer(), nullable=True),
     sa.Column('AMT_INCOME_TOTAL', sa.Float(), nullable=True),
     sa.Column('AMT_CREDIT', sa.Float(), nullable=True),
     sa.Column('AMT_ANNUITY', sa.Float(), nullable=True),
-    sa.Column('NAME_FAMILY_STATUS', sa.Float(), nullable=True),
+    sa.Column('NAME_FAMILY_STATUS', sa.String(length=64), nullable=True),
     sa.Column('REGION_POPULATION_RELATIVE', sa.Float(), nullable=True),
     sa.Column('DAYS_BIRTH', sa.Float(), nullable=True),
     sa.Column('DAYS_EMPLOYED', sa.Float(), nullable=True),
     sa.Column('DAYS_REGISTRATION', sa.Float(), nullable=True),
     sa.Column('DAYS_ID_PUBLISH', sa.Float(), nullable=True),
-    sa.Column('FLAG_EMP_PHONE', sa.Float(), nullable=True),
-    sa.Column('FLAG_WORK_PHONE', sa.Float(), nullable=True),
-    sa.Column('FLAG_PHONE', sa.Float(), nullable=True),
-    sa.Column('CNT_FAM_MEMBERS', sa.Float(), nullable=True),
-    sa.Column('REGION_RATING_CLIENT_W_CITY', sa.Float(), nullable=True),
-    sa.Column('WEEKDAY_APPR_PROCESS_START', sa.Float(), nullable=True),
-    sa.Column('HOUR_APPR_PROCESS_START', sa.Float(), nullable=True),
-    sa.Column('REG_REGION_NOT_LIVE_REGION', sa.Float(), nullable=True),
-    sa.Column('LIVE_REGION_NOT_WORK_REGION', sa.Float(), nullable=True),
-    sa.Column('REG_CITY_NOT_LIVE_CITY', sa.Float(), nullable=True),
-    sa.Column('LIVE_CITY_NOT_WORK_CITY', sa.Float(), nullable=True),
+    sa.Column('FLAG_EMP_PHONE', sa.Integer(), nullable=True),
+    sa.Column('FLAG_WORK_PHONE', sa.Integer(), nullable=True),
+    sa.Column('FLAG_PHONE', sa.Integer(), nullable=True),
+    sa.Column('CNT_FAM_MEMBERS', sa.Integer(), nullable=True),
+    sa.Column('REGION_RATING_CLIENT_W_CITY', sa.Integer(), nullable=True),
+    sa.Column('WEEKDAY_APPR_PROCESS_START', sa.String(length=64), nullable=True),
+    sa.Column('HOUR_APPR_PROCESS_START', sa.Integer(), nullable=True),
+    sa.Column('REG_REGION_NOT_LIVE_REGION', sa.Integer(), nullable=True),
+    sa.Column('LIVE_REGION_NOT_WORK_REGION', sa.Integer(), nullable=True),
+    sa.Column('REG_CITY_NOT_LIVE_CITY', sa.Integer(), nullable=True),
+    sa.Column('LIVE_CITY_NOT_WORK_CITY', sa.Integer(), nullable=True),
     sa.Column('EXT_SOURCE_2', sa.Float(), nullable=True),
     sa.Column('EXT_SOURCE_3', sa.Float(), nullable=True),
-    sa.Column('OBS_60_CNT_SOCIAL_CIRCLE', sa.Float(), nullable=True),
-    sa.Column('DEF_60_CNT_SOCIAL_CIRCLE', sa.Float(), nullable=True),
+    sa.Column('OBS_60_CNT_SOCIAL_CIRCLE', sa.Integer(), nullable=True),
+    sa.Column('DEF_60_CNT_SOCIAL_CIRCLE', sa.Integer(), nullable=True),
     sa.Column('DAYS_LAST_PHONE_CHANGE', sa.Float(), nullable=True),
-    sa.Column('FLAG_DOCUMENT_3', sa.Float(), nullable=True),
-    sa.Column('FLAG_DOCUMENT_6', sa.Float(), nullable=True),
-    sa.Column('FLAG_DOCUMENT_8', sa.Float(), nullable=True),
-    sa.Column('AMT_REQ_CREDIT_BUREAU_MON', sa.Float(), nullable=True),
-    sa.Column('AMT_REQ_CREDIT_BUREAU_QRT', sa.Float(), nullable=True),
-    sa.Column('AMT_REQ_CREDIT_BUREAU_YEAR', sa.Float(), nullable=True),
-    sa.Column('DAYS_EMPLOYED_ANOM', sa.Float(), nullable=True),
+    sa.Column('FLAG_DOCUMENT_3', sa.Integer(), nullable=True),
+    sa.Column('FLAG_DOCUMENT_6', sa.Integer(), nullable=True),
+    sa.Column('FLAG_DOCUMENT_8', sa.Integer(), nullable=True),
+    sa.Column('AMT_REQ_CREDIT_BUREAU_MON', sa.Integer(), nullable=True),
+    sa.Column('AMT_REQ_CREDIT_BUREAU_QRT', sa.Integer(), nullable=True),
+    sa.Column('AMT_REQ_CREDIT_BUREAU_YEAR', sa.Integer(), nullable=True),
+    sa.Column('DAYS_EMPLOYED_ANOM', sa.Boolean(), nullable=True),
     sa.Column('CREDIT_INCOME_PERCENT', sa.Float(), nullable=True),
     sa.Column('ANNUITY_INCOME_PERCENT', sa.Float(), nullable=True),
     sa.Column('CREDIT_TERM', sa.Float(), nullable=True),
-    sa.Column('NAME_HOUSING_TYPE_GRP', sa.Float(), nullable=True),
-    sa.Column('NAME_EDUCATION_TYPE_GRP', sa.Float(), nullable=True),
-    sa.Column('NAME_INCOME_TYPE_GRP', sa.Float(), nullable=True),
-    sa.Column('NAME_TYPE_SUITE_GRP', sa.Float(), nullable=True),
-    sa.Column('ORG_GROUP', sa.Float(), nullable=True),
-    sa.Column('OCCUPATION_TYPE_GRP', sa.Float(), nullable=True),
+    sa.Column('NAME_HOUSING_TYPE_GRP', sa.String(length=64), nullable=True),
+    sa.Column('NAME_EDUCATION_TYPE_GRP', sa.String(length=64), nullable=True),
+    sa.Column('NAME_INCOME_TYPE_GRP', sa.String(length=64), nullable=True),
+    sa.Column('NAME_TYPE_SUITE_GRP', sa.String(length=64), nullable=True),
+    sa.Column('ORG_GROUP', sa.String(length=64), nullable=True),
+    sa.Column('OCCUPATION_TYPE_GRP', sa.String(length=64), nullable=True),
     sa.Column('BUREAU_DAYS_CREDIT_mean', sa.Float(), nullable=True),
     sa.Column('BUREAU_DAYS_CREDIT_max', sa.Float(), nullable=True),
     sa.Column('BUREAU_DAYS_CREDIT_sum', sa.Float(), nullable=True),

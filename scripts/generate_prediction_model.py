@@ -1,12 +1,12 @@
 ﻿"""Générateur du modèle ORM Prediction (script utilitaire one-shot).
 
-Lit la liste des features depuis data/reference_data.parquet, applique le
-mapping de noms (api.feature_naming.to_sql_column_name), et génère
-api/models.py contenant la classe SQLAlchemy Prediction.
+Lit la liste et les types des features depuis api.schemas.PredictionInput,
+applique le mapping de noms (api.feature_naming.to_sql_column_name),
+et génère api/models.py contenant la classe SQLAlchemy Prediction.
 
-Ce script est conçu pour être ré-exécuté si jamais le modèle évolue
-(ajout/suppression de features). En P8 le modèle est figé donc il devrait
-être lancé une seule fois.
+Source de vérité des types : api/schemas.py (Pydantic).
+On ne lit PAS le parquet pour les types (le parquet pourrait évoluer
+indépendamment de l'API ; c'est le contrat Pydantic qui fait foi).
 
 Usage :
     uv run python scripts/generate_prediction_model.py
@@ -17,14 +17,12 @@ Sortie :
 Garde-fou :
     Le script échoue si le nombre de features détectées ne correspond pas
     à api.config.N_FEATURES (326). Cela évite de générer silencieusement
-    un fichier incohérent si le parquet a été altéré.
+    un fichier incohérent.
 """
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-
-import pandas as pd
 
 # Ajout du répertoire racine au PYTHONPATH pour pouvoir importer api.*
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,32 +30,53 @@ sys.path.insert(0, str(ROOT))
 
 from api.config import N_FEATURES, PROJECT_ROOT  # noqa: E402
 from api.feature_naming import to_sql_column_name  # noqa: E402
+from api.schemas import PredictionInput  # noqa: E402
 
-# --- Configuration ---
-PARQUET_PATH = PROJECT_ROOT / "data" / "reference_data.parquet"
 OUTPUT_PATH = PROJECT_ROOT / "api" / "models.py"
 
-# Colonnes du parquet à exclure (métadonnées, label, sorties du modèle)
-EXCLUDED_COLUMNS = {
-    "Unnamed: 0",
-    "SK_ID_CURR",
-    "TARGET",
-    "prediction_proba",
-    "prediction",
+# Longueur réservée pour les colonnes VARCHAR
+# (mesure max dans le reference dataset = 29 ; marge généreuse à 64)
+STRING_LENGTH = 64
+
+
+# Mapping types Python -> code SQLAlchemy (column type, import statement)
+PYTHON_TO_SQLA = {
+    float: ("Float", "Float"),
+    int: ("Integer", "Integer"),
+    str: (f"String(length={STRING_LENGTH})", "String"),
+    bool: ("Boolean", "Boolean"),
 }
 
-# --- Template du fichier généré ---
-HEADER = '''"""Modèle ORM SQLAlchemy 2.0 pour la table predictions.
+
+def python_type_to_sqla(py_type: type) -> tuple[str, str]:
+    """Renvoie (code SQLAlchemy column type, nom du type à importer)."""
+    if py_type not in PYTHON_TO_SQLA:
+        raise ValueError(
+            f"Type Python non supporté : {py_type.__name__}. "
+            f"Étendre PYTHON_TO_SQLA dans le générateur."
+        )
+    return PYTHON_TO_SQLA[py_type]
+
+
+def python_type_to_mapped(py_type: type) -> str:
+    """Renvoie l'annotation Mapped[...] correspondant au type Python."""
+    return f"Mapped[{py_type.__name__} | None]"
+
+
+def generate_header(used_sqla_types: set[str]) -> str:
+    """Génère l'en-tête du fichier avec les imports adaptés."""
+    sqla_types_imports = ", ".join(sorted(used_sqla_types))
+    return f'''"""Modèle ORM SQLAlchemy 2.0 pour la table predictions.
 
 ⚠️ FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER À LA MAIN.
 Régénérer via : uv run python scripts/generate_prediction_model.py
 
-Source des features : data/reference_data.parquet
+Source des features : api.schemas.PredictionInput
 Mapping des noms   : api.feature_naming.to_sql_column_name
 """
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, Integer, String, func
+from sqlalchemy import DateTime, {sqla_types_imports}, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from api.database import Base
@@ -76,7 +95,7 @@ class Prediction(Base):
     # --- Identifiants ---
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     request_id: Mapped[str] = mapped_column(
-        String(36), unique=True, index=True, nullable=False,
+        String(length=36), unique=True, index=True, nullable=False,
         comment="UUID de la requête, exposé au client pour traçabilité",
     )
 
@@ -85,11 +104,11 @@ class Prediction(Base):
         DateTime(timezone=True),
         index=True,
         nullable=False,
-        server_default=func.now(),
+        server_default=func.current_timestamp(),
         comment="Horodatage UTC de la prédiction",
     )
     model_version: Mapped[str] = mapped_column(
-        String(32), index=True, nullable=False,
+        String(length=32), index=True, nullable=False,
         comment="Version de l'API/modèle ayant produit la prédiction",
     )
     threshold: Mapped[float] = mapped_column(
@@ -107,8 +126,9 @@ class Prediction(Base):
         comment="Décision binaire (0 ou 1) après application du seuil",
     )
 
-    # --- Features (auto-générées) ---
+    # --- Features (auto-générées depuis schemas.py) ---
 '''
+
 
 FOOTER = '''
     def __repr__(self) -> str:
@@ -120,66 +140,59 @@ FOOTER = '''
 
 
 def main() -> None:
-    print(f"Lecture du parquet : {PARQUET_PATH}")
-    if not PARQUET_PATH.exists():
-        raise FileNotFoundError(f"Parquet introuvable : {PARQUET_PATH}")
+    print("Lecture des types depuis api.schemas.PredictionInput...")
 
-    df = pd.read_parquet(PARQUET_PATH)
-    all_columns = df.columns.tolist()
-    print(f"  Total colonnes dans le parquet : {len(all_columns)}")
+    fields = PredictionInput.model_fields
+    print(f"  Total champs Pydantic : {len(fields)}")
 
-    # Filtrer les colonnes-métadonnées
-    feature_columns = [c for c in all_columns if c not in EXCLUDED_COLUMNS]
-    print(f"  Colonnes exclues : {sorted(EXCLUDED_COLUMNS)}")
-    print(f"  Features candidates : {len(feature_columns)}")
-
-    # Garde-fou : on attend exactement N_FEATURES (326)
-    if len(feature_columns) != N_FEATURES:
+    if len(fields) != N_FEATURES:
         raise ValueError(
-            f"Nombre de features incohérent : attendu {N_FEATURES}, "
-            f"trouvé {len(feature_columns)}. Vérifier le parquet ou la blacklist."
+            f"Nombre de champs Pydantic incohérent : attendu {N_FEATURES}, "
+            f"trouvé {len(fields)}. Vérifier api/schemas.py."
         )
 
-    # Appliquer le mapping de noms et vérifier l'unicité
-    sql_names = [to_sql_column_name(c) for c in feature_columns]
-    if len(set(sql_names)) != len(sql_names):
-        # Détecter les doublons pour message d'erreur explicite
-        seen, dupes = set(), []
-        for n in sql_names:
-            if n in seen:
-                dupes.append(n)
-            seen.add(n)
-        raise ValueError(
-            f"Collision de noms SQL après mapping : {dupes}. "
-            "Réviser api/feature_naming.py."
-        )
-
-    # Construire la liste des champs Mapped[float | None]
-    print(f"\nGénération de {len(feature_columns)} colonnes ORM...")
+    # Extraire (nom_python, type_python, alias) pour chaque champ
+    print("\nGénération de la classe ORM...")
     field_lines: list[str] = []
+    used_sqla_types: set[str] = {"Float", "Integer", "String"}  # types des colonnes système
+    type_counts: dict[str, int] = {}
     n_renamed = 0
-    for original in feature_columns:
-        sql_name = to_sql_column_name(original)
-        if sql_name != original:
+
+    for python_name, field_info in fields.items():
+        py_type = field_info.annotation
+        type_name = py_type.__name__
+        type_counts[type_name] = type_counts.get(type_name, 0) + 1
+
+        sqla_code, sqla_import = python_type_to_sqla(py_type)
+        used_sqla_types.add(sqla_import)
+        mapped_annotation = python_type_to_mapped(py_type)
+
+        # Le nom python de schemas.py doit déjà être un nom SQL valide
+        # (alignement validé : schemas.py utilise des "_lambda" et pas "<lambda>")
+        sql_name = to_sql_column_name(python_name)
+
+        # L'alias original (si présent) sert à documenter la généalogie
+        alias = field_info.alias
+        comment_part = f"  # original: {alias}" if alias and alias != python_name else ""
+
+        if sql_name != python_name:
             n_renamed += 1
-            # Annoter le renommage en commentaire pour traçabilité
-            field_lines.append(
-                f'    {sql_name}: Mapped[float | None] = mapped_column('
-                f'Float, nullable=True)  # original: {original}'
-            )
-        else:
-            field_lines.append(
-                f'    {sql_name}: Mapped[float | None] = mapped_column('
-                f'Float, nullable=True)'
-            )
-    print(f"  Renommées (lambda) : {n_renamed}")
-    print(f"  Identiques         : {len(feature_columns) - n_renamed}")
+            comment_part = f"  # original: {alias or python_name}"
+
+        line = (
+            f'    {sql_name}: {mapped_annotation} = mapped_column('
+            f'{sqla_code}, nullable=True){comment_part}'
+        )
+        field_lines.append(line)
+
+    print(f"  Distribution des types : {dict(sorted(type_counts.items()))}")
+    print(f"  Renommées (lambda)     : {n_renamed}")
+    print(f"  Identiques             : {len(fields) - n_renamed}")
 
     # Assembler le fichier
     body = "\n".join(field_lines)
-    file_content = HEADER + body + FOOTER
+    file_content = generate_header(used_sqla_types) + body + FOOTER
 
-    # Écrire (UTF-8 sans BOM pour compat Linux/Docker)
     OUTPUT_PATH.write_text(file_content, encoding="utf-8")
     print(f"\n✓ Fichier généré : {OUTPUT_PATH}")
     print(f"  Taille : {OUTPUT_PATH.stat().st_size:,} octets")
@@ -188,3 +201,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
