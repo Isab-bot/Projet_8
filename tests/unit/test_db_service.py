@@ -145,4 +145,3 @@ class TestLogPrediction:
         )
         count = db_session.query(Prediction).count()
         assert count == 2
-        

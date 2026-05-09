@@ -2,8 +2,7 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -12,9 +11,9 @@ from alembic import context
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+from api import models  # noqa: E402, F401  # Enregistre Prediction dans Base.metadata
 from api.config import DATABASE_URL  # noqa: E402
 from api.database import Base  # noqa: E402
-from api import models  # noqa: E402, F401  # Force l'enregistrement de Prediction dans Base.metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

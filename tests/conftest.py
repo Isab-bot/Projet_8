@@ -8,8 +8,8 @@ Architecture :
 """
 from __future__ import annotations
 
-import os
 import json
+import os
 
 # IMPORTANT : doit être positionné AVANT l'import de api.main
 os.environ["SKIP_ALEMBIC_ON_STARTUP"] = "1"
@@ -18,7 +18,6 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -110,4 +109,3 @@ def sample_prediction_input(sample_payload_dict: dict):
     """
     from api.schemas import PredictionInput
     return PredictionInput.model_validate(sample_payload_dict)
-    

@@ -8,7 +8,7 @@ Mapping des noms   : api.feature_naming.to_sql_column_name
 """
 from datetime import datetime
 
-from sqlalchemy import DateTime, Boolean, Float, Integer, String, func
+from sqlalchemy import Boolean, DateTime, Float, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from api.database import Base

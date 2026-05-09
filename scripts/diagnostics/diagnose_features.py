@@ -1,8 +1,9 @@
 """Diagnostic : identifier les colonnes en trop entre le dataset et le modèle."""
 
+from pathlib import Path
+
 import joblib
 import pandas as pd
-from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = PROJECT_ROOT / "models" / "xgboost_champion.pkl"

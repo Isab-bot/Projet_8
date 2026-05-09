@@ -3,9 +3,10 @@ Sanity check : reproduit les prédictions du notebook P6 sur df_test_final.
 Doit donner 38.8% de prédictions positives (notebook cellule 4).
 """
 import json
+from pathlib import Path
+
 import joblib
 import pandas as pd
-from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODEL_PATH = PROJECT_ROOT / "models" / "xgboost_champion.pkl"
@@ -35,9 +36,9 @@ def main() -> None:
 
     print(f"\n--- Résultats sur df_test_final ({len(df)} obs) ---")
     print(f"Taux prédictions positives : {pred.mean():.4f}")
-    print(f"Attendu (notebook P6)      : 0.3880")
+    print("Attendu (notebook P6)      : 0.3880")
     print(f"Moyenne probas             : {proba.mean():.4f}")
-    print(f"Attendu (notebook P6)      : 0.3119")
+    print("Attendu (notebook P6)      : 0.3119")
 
 
 if __name__ == "__main__":
