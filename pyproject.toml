@@ -68,6 +68,8 @@ ignore = [
 "api/schemas.py" = ["E741"]
 # Les scripts peuvent avoir des imports/usages plus libres
 "scripts/*.py" = ["F401"]
+# Les migrations Alembic sont auto-générées, on ne les modifie pas
+"alembic/versions/*.py" = ["W291", "W292", "W293", "E501"]
 
 [tool.coverage.report]
 exclude_lines = [
