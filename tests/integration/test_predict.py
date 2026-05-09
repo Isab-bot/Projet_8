@@ -167,3 +167,31 @@ class TestPredictFailOpen:
         body = response.json()
         assert "probability" in body
         assert "decision" in body
+
+class TestPredictInternalError:
+    """Erreur 500 quand une exception générique non gérée est levée."""
+
+    def test_unexpected_exception_returns_500(
+        self, client: TestClient, sample_payload_dict: dict
+    ) -> None:
+        """Si predictor.predict lève une exception générique, l'API répond 500.
+
+        Note : on construit un TestClient dédié avec raise_server_exceptions=False
+        pour que les exceptions soient gérées par les handlers FastAPI au lieu
+        de remonter dans le test (comportement par défaut de TestClient).
+        La fixture `client` est demandée pour s'assurer que le lifespan a déjà
+        chargé app.state.predictor.
+        """
+        def broken_predict(_):
+            raise RuntimeError("Unexpected failure")
+
+        original_predict = app.state.predictor.predict
+        app.state.predictor.predict = broken_predict
+        try:
+            test_client = TestClient(app, raise_server_exceptions=False)
+            response = test_client.post("/predict", json=sample_payload_dict)
+            assert response.status_code == 500
+            body = response.json()
+            assert "detail" in body
+        finally:
+            app.state.predictor.predict = original_predict
