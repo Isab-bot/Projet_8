@@ -16,7 +16,7 @@ COPY pyproject.toml uv.lock ./
 
 # Installe les dépendances (sans le projet lui-même)
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project
+    uv sync --frozen --no-install-project --no-dev --no-group monitoring
 
 # Copie le code applicatif et installe le projet
 COPY api/ ./api/
@@ -25,7 +25,7 @@ COPY alembic.ini ./
 COPY models/ ./models/
 
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen
+    uv sync --frozen --no-dev --no-group monitoring
 
 
 # ============================================================
