@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: projet8-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: credit_user
+      POSTGRES_PASSWORD: credit_pass
+      POSTGRES_DB: credit_scoring
+    ports:
+      - "5433:5432"
+    volumes:
+      - projet8-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U credit_user -d credit_scoring"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: projet8-api:dev
+    container_name: projet8-api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://credit_user:credit_pass@postgres:5432/credit_scoring
+      API_VERSION: "0.1.0"
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  projet8-postgres-data:
+    name: projet8-postgres-data
