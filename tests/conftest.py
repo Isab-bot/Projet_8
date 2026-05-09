@@ -9,6 +9,7 @@ Architecture :
 from __future__ import annotations
 
 import os
+import json
 
 # IMPORTANT : doit être positionné AVANT l'import de api.main
 os.environ["SKIP_ALEMBIC_ON_STARTUP"] = "1"
@@ -17,7 +18,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
-# ... (le reste inchangé)
+
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
@@ -87,3 +88,26 @@ def client(test_engine: Engine) -> Generator[TestClient, None, None]:
     with test_engine.connect() as conn:
         conn.execute(text(f"DELETE FROM {Prediction.__tablename__}"))
         conn.commit()
+
+@pytest.fixture(scope="session")
+def sample_payload_dict() -> dict:
+    """Payload de test (326 features avec noms d'origine, alias <lambda>).
+
+    Source : tests/fixtures/sample_request.json (extrait de reference_data.parquet,
+    ligne 0). Versionné dans le repo pour que les tests tournent en CI.
+    """
+    fixture_path = Path(__file__).parent / "fixtures" / "sample_request.json"
+    with fixture_path.open("r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+@pytest.fixture(scope="session")
+def sample_prediction_input(sample_payload_dict: dict):
+    """PredictionInput Pydantic construit depuis le payload de test.
+
+    Validé par Pydantic (model_validate), donc équivalent à un POST /predict
+    avec un body JSON valide.
+    """
+    from api.schemas import PredictionInput
+    return PredictionInput.model_validate(sample_payload_dict)
+    
