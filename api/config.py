@@ -4,8 +4,8 @@ Toutes les constantes du projet sont définies ici pour éviter les
 magic numbers dispersés dans le code et faciliter la maintenance.
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 
 # --- Chemins ---
 PROJECT_ROOT = Path(__file__).resolve().parent.parent

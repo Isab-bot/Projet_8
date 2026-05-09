@@ -132,4 +132,3 @@ class TestPredictorPredict:
         input_mock.model_dump.return_value = {"feature": 1.0}
         with pytest.raises(ModelNotLoadedError):
             predictor.predict(input_mock)
-            

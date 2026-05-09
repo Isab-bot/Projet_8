@@ -5,19 +5,19 @@ et les endpoints exposés (/health, /predict).
 """
 
 from __future__ import annotations
-import os
+
 import logging
+import os
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from uuid import uuid4
 
+from alembic.config import Config as AlembicConfig
 from fastapi import Depends, FastAPI, Request, status
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from alembic import command as alembic_command
-from alembic.config import Config as AlembicConfig
-
 from api.config import API_DESCRIPTION, API_TITLE, API_VERSION
 from api.database import get_db
 from api.db_service import log_prediction

@@ -59,14 +59,14 @@ def main() -> None:
     print(f"      distribution TARGET : {sample[TARGET_COL].value_counts().to_dict()}")
 
     # --- 3. Chargement modèle + seuil ---
-    print(f"[3/5] Chargement modèle + seuil...")
+    print("[3/5] Chargement modèle + seuil...")
     model = joblib.load(MODEL_PATH)
     metadata = json.loads(METADATA_PATH.read_text(encoding="utf-8"))
     threshold = metadata["decision_threshold"]
     print(f"      seuil = {threshold:.6f}")
 
     # --- 4. Prédictions ---
-    print(f"[4/5] Calcul des prédictions...")
+    print("[4/5] Calcul des prédictions...")
     # Colonnes à exclure : TARGET (label) + colonnes parasites du parquet P6
     NON_FEATURE_COLS = {TARGET_COL, "SK_ID_CURR", "Unnamed: 0"}
     feature_cols = [c for c in sample.columns if c not in NON_FEATURE_COLS]
@@ -91,7 +91,7 @@ def main() -> None:
     print(f"      taux réel TARGET=1            : {sample[TARGET_COL].mean():.4f}")
 
     # --- 5. Export ---
-    print(f"[5/5] Export parquet...")
+    print("[5/5] Export parquet...")
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     sample.to_parquet(OUTPUT_PATH, index=False, engine="pyarrow", compression="snappy")
     size_mb = OUTPUT_PATH.stat().st_size / (1024 * 1024)
@@ -100,4 +100,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    

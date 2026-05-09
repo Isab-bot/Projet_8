@@ -17,7 +17,6 @@ from pydantic import BaseModel, Field
 
 from api.predictor import ModelNotLoadedError
 
-
 # --- Schémas de réponse d'erreur (documentés dans Swagger) -----------------
 
 class ValidationErrorDetail(BaseModel):

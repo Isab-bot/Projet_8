@@ -41,7 +41,7 @@ def dtype_to_python(dtype) -> str:
 
 def sanitize_field_name(name: str) -> str:
     """Convertit un nom de feature en identifiant Python valide.
-    
+
     Les caractères '<' et '>' issus des lambdas pandas sont supprimés.
     Si le nom est déjà valide, il est retourné tel quel.
     """

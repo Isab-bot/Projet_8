@@ -82,3 +82,6 @@ desktop.ini
 # === Jupyter ===
 .ipynb_checkpoints/
 *.ipynb_checkpoints
+
+# Brouillon de travail (sera intégré au README final puis supprimé)
+CHANGELOG.md
