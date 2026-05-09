@@ -5,7 +5,7 @@ et les endpoints exposés (/health, /predict).
 """
 
 from __future__ import annotations
-
+import os
 import logging
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
@@ -37,24 +37,19 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Démarrage : applique les migrations DB puis charge le modèle.
-
-    1. Alembic upgrade head : crée/met à jour la table predictions si besoin.
-    2. Predictor() : charge le pipeline XGBoost en mémoire (une seule fois).
-
-    Idempotent : si la migration est déjà appliquée, Alembic ne fait rien.
-    """
+    """Démarrage : applique les migrations DB puis charge le modèle."""
     # STARTUP
-    logger.info("Application des migrations Alembic...")
-    alembic_cfg = AlembicConfig("alembic.ini")
-    alembic_command.upgrade(alembic_cfg, "head")
-    logger.info("Migrations appliquées.")
+    if os.getenv("SKIP_ALEMBIC_ON_STARTUP") != "1":
+        logger.info("Application des migrations Alembic...")
+        alembic_cfg = AlembicConfig("alembic.ini")
+        alembic_command.upgrade(alembic_cfg, "head")
+        logger.info("Migrations appliquées.")
+    else:
+        logger.info("Alembic skip activé (test mode).")
 
     app.state.predictor = Predictor()
     yield
-    # SHUTDOWN
     app.state.predictor = None
-
 
 # --- Application FastAPI ---------------------------------------------------
 
@@ -120,7 +115,7 @@ async def health(request: Request) -> HealthResponse:
     summary="Prédit la probabilité de défaut de crédit",
     tags=["prediction"],
     responses={
-        status.HTTP_422_UNPROCESSABLE_ENTITY: {
+        status.HTTP_422_UNPROCESSABLE_CONTENT: {
             "model": ValidationErrorResponse,
             "description": "Erreur de validation des features d'entrée.",
         },

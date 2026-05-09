@@ -58,3 +58,6 @@ directory = "htmlcov"
 testpaths = ["tests"]
 python_files = "test_*.py"
 addopts = "--cov=api --cov=monitoring --cov-report=term-missing --cov-report=html"
+filterwarnings = [
+    "ignore:.*If you are loading a serialized model.*:UserWarning",
+]
