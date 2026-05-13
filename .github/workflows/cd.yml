@@ -1,0 +1,108 @@
+name: CD — Build & Deploy to Hugging Face Spaces
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate (ruff + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up UV
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          python-version: "3.13"
+
+      - name: Install dependencies (frozen)
+        run: uv sync --frozen
+
+      - name: Lint with ruff
+        run: uv run ruff check .
+
+      - name: Run tests
+        run: uv run pytest --cov
+
+  build-and-push-ghcr:
+    name: Build & Push to GHCR
+    runs-on: ubuntu-latest
+    needs: validate
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag-sha: ${{ steps.meta.outputs.tag-sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image metadata
+        id: meta
+        run: |
+          REPO_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          echo "repo-lower=${REPO_LOWER}" >> $GITHUB_OUTPUT
+          echo "tag-sha=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.meta.outputs.repo-lower }}/projet8-api:latest
+            ghcr.io/${{ steps.meta.outputs.repo-lower }}/projet8-api:${{ steps.meta.outputs.tag-sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-to-hf:
+    name: Deploy to Hugging Face Space
+    runs-on: ubuntu-latest
+    needs: build-and-push-ghcr
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Push huggingface/ folder to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_NAME: ${{ secrets.HF_SPACE_NAME }}
+        run: |
+          # Configure git identity for the push commit
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+          # Clone the HF Space repo into a temp folder
+          git clone "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_NAME}" hf-space
+
+          # Copy README and Dockerfile from huggingface/ into the HF repo
+          cp huggingface/README.md hf-space/README.md
+          cp huggingface/Dockerfile hf-space/Dockerfile
+
+          # Commit and push (only if there is a real change)
+          cd hf-space
+          git add README.md Dockerfile
+          if git diff --cached --quiet; then
+            echo "No changes to push to HF Space."
+          else
+            git commit -m "deploy: sync from GitHub @ ${GITHUB_SHA::7}"
+            git push
+            echo "HF Space updated. It will rebuild automatically."
+          fi
