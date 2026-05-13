@@ -6,7 +6,7 @@ colorTo: green
 sdk: docker
 app_port: 8000
 pinned: false
-short_description: API FastAPI de scoring crédit (XGBoost) — Projet 8 OpenClassrooms
+short_description: API FastAPI de scoring crédit (XGBoost) — Projet 8 OC
 ---
 
 # Projet 8 — Credit Scoring API
