@@ -49,7 +49,9 @@ COPY --from=builder --chown=appuser:appuser /app /app
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1
-
+    
+# Cree le dossier data/ utilise par la SQLite de fallback (HF Spaces, plain docker run)
+RUN mkdir -p /app/data && chown appuser:appuser /app/data
 USER appuser
 
 EXPOSE 8000
