@@ -92,9 +92,14 @@ jobs:
           # Clone the HF Space repo into a temp folder
           git clone "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE_NAME}" hf-space
 
-          # Copy README and Dockerfile from huggingface/ into the HF repo
+          # Copy README as-is, but rewrite the Dockerfile to pin the GHCR tag
+          # to the current commit's sha-<short> tag. This guarantees that every
+          # successful CD run produces a different huggingface/Dockerfile content,
+          # which triggers an automatic HF Space rebuild (HF only rebuilds when
+          # the repo receives a new commit, not when the underlying GHCR image
+          # is updated under the same :latest tag).
           cp huggingface/README.md hf-space/README.md
-          cp huggingface/Dockerfile hf-space/Dockerfile
+          sed "s|projet8-api:latest|projet8-api:sha-${GITHUB_SHA::7}|g" huggingface/Dockerfile > hf-space/Dockerfile
 
           # Commit and push (only if there is a real change)
           cd hf-space
