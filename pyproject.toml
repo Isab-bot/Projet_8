@@ -1,0 +1,92 @@
+[project]
+name = "projet8-credit-scoring-mlops"
+version = "0.1.0"
+description = "Déploiement et monitoring d'un modèle de scoring crédit (Projet 8 - OpenClassrooms AI Engineer)"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # === API ===
+    "fastapi[standard]>=0.121.1",
+    "uvicorn>=0.38.0",
+    "pydantic>=2.12.4",
+    "python-dotenv>=1.2.1",
+    # === Modèle (chargement + inférence) ===
+    "xgboost>=3.1.2",
+    "scikit-learn>=1.7.2",
+    "pandas>=2.3.3",
+    "numpy>=2.0.0",
+    "joblib>=1.5.2",
+    # === Base de données ===
+    "sqlalchemy>=2.0",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.1",
+    "pytest-cov>=7.0.0",
+    "httpx>=0.27.0",  # Pour TestClient FastAPI
+    "ruff",
+]
+monitoring = [
+    "streamlit>=1.40.0",
+    "evidently>=0.5.0",
+    "plotly>=5.24.0",
+]
+
+[tool.coverage.run]
+source = ["api", "monitoring"]
+omit = [
+    "*/tests/*",
+    "*/.venv/*",
+    "*/venv/*",
+    "scripts/*",
+    "docs/*",
+    "htmlcov/*",
+    "*/__init__.py",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+# Règles activées (permissif au démarrage)
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes (imports inutilisés, variables non définies, etc.)
+    "I",   # isort (ordre des imports)
+    "W",   # pycodestyle warnings
+]
+ignore = [
+    "E501",  # line too long — on laisse ruff format gérer ça si besoin
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Les schémas Pydantic ont des noms de variables longs (326 features)
+"api/schemas.py" = ["E741"]
+# Les scripts peuvent avoir des imports/usages plus libres
+"scripts/*.py" = ["F401"]
+# Les migrations Alembic sont auto-générées, on ne les modifie pas
+"alembic/versions/*.py" = ["W291", "W292", "W293", "E501"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "--cov=api --cov=monitoring --cov-report=term-missing --cov-report=html"
+filterwarnings = [
+    "ignore:.*If you are loading a serialized model.*:UserWarning",
+]

@@ -1,0 +1,15 @@
+{
+  "model_name": "xgboost_champion",
+  "source_project": "Projet_6",
+  "mlflow_run_uuid": "a3ff1e12347c4bfc9b484ac36916eb14",
+  "mlflow_run_name": "FINAL_TEST_XGBoost",
+  "mlflow_model_id": "m-30fce0016ff849fe863eba9abcdce510",
+  "mlflow_experiment": "Credit_Risk_04_Final_Evaluation_Test_Set",
+  "mlflow_experiment_id": 9,
+  "tracking_uri": "sqlite:///C:/MLflow_tracking/credit_risk/mlflow.db",
+  "metrics": {
+    "test_f3_score": 0.5583
+  },
+  "decision_threshold": 0.33381930539322036,
+  "extracted_at": "2026-05-01T09:28:13.664370+00:00"
+}

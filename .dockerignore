@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info
+.pytest_cache
+.coverage
+htmlcov
+.mypy_cache
+.ruff_cache
+
+# Virtual env
+.venv
+venv
+
+# UV cache
+.uv-cache
+
+# Tests (pas besoin dans l'image runtime)
+tests
+.coveragerc
+
+# Data (gitignored déjà, mais double sécurité)
+data/raw
+data/predictions.db
+
+# Docs et config locale
+.env
+.env.local
+*.md
+docs
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker lui-même
+docker
+.dockerignore
+Dockerfile*
+docker-compose*.yml
