@@ -27,6 +27,7 @@ from api.exceptions import (
     ValidationErrorResponse,
     register_exception_handlers,
 )
+from api.middleware import register_latency_middleware
 from api.predictor import ModelNotLoadedError, Predictor
 from api.schemas import HealthResponse, PredictionInput, PredictionOutput
 
@@ -62,6 +63,9 @@ app = FastAPI(
 
 # Enregistrement des handlers d'exceptions custom
 register_exception_handlers(app)
+
+# Enregistrement des middlewares d'instrumentation
+register_latency_middleware(app)
 
 
 # --- Dépendances -----------------------------------------------------------
