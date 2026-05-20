@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from uuid import uuid4
@@ -134,6 +135,7 @@ async def health(request: Request) -> HealthResponse:
     },
 )
 def predict(
+    request: Request,
     input_data: PredictionInput,
     predictor: Predictor = Depends(get_predictor),
     db: Session = Depends(get_db),
@@ -151,9 +153,17 @@ def predict(
     """
     request_id = str(uuid4())
 
-    # Calcul de la prédiction (peut lever : 500 si modèle planté)
+    # Mesure du temps d'inférence (séquence B : exclut la persistance DB).
+    inference_start = time.perf_counter()
     output = predictor.predict(input_data)
+    inference_ms = (time.perf_counter() - inference_start) * 1000.0
+
     output.request_id = request_id
+
+    # Calcul de la latence totale AVANT la persistance DB pour exclure
+    # le temps d'écriture DB de la valeur stockée (séquence B).
+    # request.state.start_time est posé par le latency middleware.
+    latency_ms = (time.perf_counter() - request.state.start_time) * 1000.0
 
     # Persistance fail-open : on log l'erreur mais on retourne quand même la prédiction
     try:
@@ -165,6 +175,8 @@ def predict(
             decision=output.decision,
             model_version=API_VERSION,
             threshold=output.threshold,
+            latency_ms=latency_ms,
+            inference_ms=inference_ms,
         )
     except SQLAlchemyError:
         logger.error(

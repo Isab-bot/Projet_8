@@ -35,6 +35,8 @@ class TestLogPrediction:
             decision=1,
             model_version="0.1.0",
             threshold=0.334,
+            latency_ms=50.0,
+            inference_ms=10.0,
         )
         count = db_session.query(Prediction).count()
         assert count == 1
@@ -53,6 +55,8 @@ class TestLogPrediction:
             decision=1,
             model_version="0.1.0",
             threshold=0.334,
+            latency_ms=50.0,
+            inference_ms=10.0,
         )
         row = db_session.query(Prediction).filter_by(request_id="test-uuid-002").one()
         assert row.request_id == "test-uuid-002"
@@ -84,6 +88,8 @@ class TestLogPrediction:
             decision=0,
             model_version="0.1.0",
             threshold=0.334,
+            latency_ms=50.0,
+            inference_ms=10.0,
         )
         row = db_session.query(Prediction).filter_by(request_id="test-uuid-003").one()
 
@@ -114,6 +120,8 @@ class TestLogPrediction:
             decision=0,
             model_version="0.1.0",
             threshold=0.334,
+            latency_ms=50.0,
+            inference_ms=10.0,
         )
         db_session.expire_all()
         row = db_session.query(Prediction).filter_by(request_id="test-uuid-004").first()
@@ -133,6 +141,8 @@ class TestLogPrediction:
             decision=0,
             model_version="0.1.0",
             threshold=0.334,
+            latency_ms=50.0,
+            inference_ms=10.0,
         )
         log_prediction(
             db=db_session,
@@ -142,6 +152,8 @@ class TestLogPrediction:
             decision=1,
             model_version="0.1.0",
             threshold=0.334,
+            latency_ms=50.0,
+            inference_ms=10.0,
         )
         count = db_session.query(Prediction).count()
         assert count == 2
