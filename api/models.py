@@ -57,6 +57,16 @@ class Prediction(Base):
         Integer, nullable=False,
         comment="Décision binaire (0 ou 1) après application du seuil",
     )
+    # --- Instrumentation (monitoring drift) ---
+    latency_ms: Mapped[float | None] = mapped_column(
+        Float, nullable=True,
+        comment="Latence totale de la requête en ms (mesurée côté handler)",
+    )
+    inference_ms: Mapped[float | None] = mapped_column(
+        Float, nullable=True,
+        comment="Temps d'exécution de model.predict_proba() en ms",
+    )
+    # --- Features (auto-générées depuis schemas.py) ---
 
     # --- Features (auto-générées depuis schemas.py) ---
     NAME_CONTRACT_TYPE: Mapped[str | None] = mapped_column(String(length=64), nullable=True)

@@ -14,6 +14,8 @@ from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import inspect
+from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -195,3 +197,96 @@ class TestPredictInternalError:
             assert "detail" in body
         finally:
             app.state.predictor.predict = original_predict
+
+class TestPredictInstrumentation:
+    """Vérifie que latency_ms et inference_ms sont bien instrumentés.
+
+    Validation rétroactive du middleware (pose request.state.start_time) et
+    du wrap d'inférence dans le handler /predict (séquence B : latency_ms
+    calculée avant la persistance DB, donc exclut le temps d'écriture).
+    """
+
+    def test_latency_ms_is_populated_and_positive(
+        self,
+        client: TestClient,
+        db_session: Session,
+        sample_payload_dict: dict,
+    ) -> None:
+        """Après POST /predict 200, latency_ms est non-NULL et strictement positive."""
+        response = client.post("/predict", json=sample_payload_dict)
+        assert response.status_code == 200
+        request_id = response.json()["request_id"]
+
+        row = (
+            db_session.query(Prediction)
+            .filter_by(request_id=request_id)
+            .one()
+        )
+        assert row.latency_ms is not None, "latency_ms n'a pas été persistée"
+        assert row.latency_ms > 0, (
+            f"latency_ms doit être strictement positive, got {row.latency_ms}"
+        )
+
+    def test_inference_ms_is_populated_and_positive(
+        self,
+        client: TestClient,
+        db_session: Session,
+        sample_payload_dict: dict,
+    ) -> None:
+        """Après POST /predict 200, inference_ms est non-NULL et strictement positive."""
+        response = client.post("/predict", json=sample_payload_dict)
+        assert response.status_code == 200
+        request_id = response.json()["request_id"]
+
+        row = (
+            db_session.query(Prediction)
+            .filter_by(request_id=request_id)
+            .one()
+        )
+        assert row.inference_ms is not None, "inference_ms n'a pas été persistée"
+        assert row.inference_ms > 0, (
+            f"inference_ms doit être strictement positive, got {row.inference_ms}"
+        )
+
+    def test_inference_ms_is_less_than_or_equal_to_latency_ms(
+        self,
+        client: TestClient,
+        db_session: Session,
+        sample_payload_dict: dict,
+    ) -> None:
+        """inference_ms <= latency_ms : le temps d'inférence est inclus dans la
+        latence totale (séquence B : latency mesurée du middleware au handler,
+        après l'inférence mais avant la persistance DB).
+        """
+        response = client.post("/predict", json=sample_payload_dict)
+        assert response.status_code == 200
+        request_id = response.json()["request_id"]
+
+        row = (
+            db_session.query(Prediction)
+            .filter_by(request_id=request_id)
+            .one()
+        )
+        assert row.inference_ms <= row.latency_ms, (
+            f"inference_ms ({row.inference_ms}) doit être <= latency_ms "
+            f"({row.latency_ms})"
+        )
+
+    def test_instrumentation_columns_exist_in_schema(
+        self,
+        test_engine: Engine,
+    ) -> None:
+        """Les colonnes latency_ms et inference_ms sont présentes en DB.
+
+        Vérifie que la migration Alembic a bien été appliquée et que les
+        colonnes existent dans le schéma physique (pas seulement dans le
+        modèle ORM Python).
+        """
+        inspector = inspect(test_engine)
+        columns = {c["name"] for c in inspector.get_columns(Prediction.__tablename__)}
+        assert "latency_ms" in columns, (
+            f"Colonne latency_ms absente du schéma. Colonnes présentes : {columns}"
+        )
+        assert "inference_ms" in columns, (
+            f"Colonne inference_ms absente du schéma. Colonnes présentes : {columns}"
+        )

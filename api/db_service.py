@@ -22,6 +22,8 @@ def log_prediction(
     decision: int,
     model_version: str,
     threshold: float,
+    latency_ms: float,
+    inference_ms: float,
 ) -> None:
     """Persiste une prédiction dans la table predictions.
 
@@ -33,6 +35,11 @@ def log_prediction(
         decision: Décision binaire 0 ou 1 après application du seuil.
         model_version: Version de l'API/modèle (ex. "0.1.0").
         threshold: Seuil F3 utilisé pour la décision.
+        latency_ms: Latence totale de la requête mesurée côté handler
+            (du middleware start_time jusqu'à juste avant l'écriture DB),
+            en millisecondes.
+        inference_ms: Temps d'exécution de model.predict_proba()
+            uniquement, en millisecondes.
 
     Raises:
         sqlalchemy.exc.SQLAlchemyError: en cas d'échec d'insertion.
@@ -42,6 +49,8 @@ def log_prediction(
         - Le timestamp est posé côté DB (server_default=now()), pas ici.
         - by_alias=False : on veut les noms Python (alignés avec models.py),
           pas les noms d'origine du parquet (qui contiennent "<lambda>").
+        - latency_ms exclut le temps d'écriture DB (la persistance se fait
+          après le calcul de latency_ms côté handler).
     """
     features_dict = input_data.model_dump(by_alias=False)
 
@@ -51,6 +60,8 @@ def log_prediction(
         threshold=threshold,
         prediction_proba=proba,
         prediction=decision,
+        latency_ms=latency_ms,
+        inference_ms=inference_ms,
         **features_dict,
     )
 

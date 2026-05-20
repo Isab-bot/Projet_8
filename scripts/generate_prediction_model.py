@@ -68,11 +68,14 @@ def generate_header(used_sqla_types: set[str]) -> str:
     sqla_types_imports = ", ".join(sorted(used_sqla_types))
     return f'''"""Modèle ORM SQLAlchemy 2.0 pour la table predictions.
 
+"""Modèle ORM SQLAlchemy 2.0 pour la table predictions.
 ⚠️ FICHIER AUTO-GÉNÉRÉ — NE PAS ÉDITER À LA MAIN.
 Régénérer via : uv run python scripts/generate_prediction_model.py
-
 Source des features : api.schemas.PredictionInput
 Mapping des noms   : api.feature_naming.to_sql_column_name
+Les colonnes métier (id, request_id, timestamp, model_version, threshold,
+prediction_proba, prediction, latency_ms, inference_ms) sont définies dans
+le HEADER du script générateur — pas éditer ici, éditer le script.
 """
 from datetime import datetime
 
