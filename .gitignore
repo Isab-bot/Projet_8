@@ -78,6 +78,7 @@ mlflow.db
 # === OS ===
 Thumbs.db
 desktop.ini
+~$*
 
 # === Jupyter ===
 .ipynb_checkpoints/
