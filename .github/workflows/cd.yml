@@ -21,11 +21,12 @@ jobs:
       - name: Set up UV
         uses: astral-sh/setup-uv@v3
         with:
+          version: "latest"
           enable-cache: true
           python-version: "3.13"
 
       - name: Install dependencies (frozen)
-        run: uv sync --frozen
+        run: uv sync --frozen --group monitoring
 
       - name: Lint with ruff
         run: uv run ruff check .
