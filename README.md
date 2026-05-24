@@ -5,6 +5,19 @@
 
 > Mise en production complète d'un modèle de scoring crédit XGBoost : API REST, conteneurisation, pipeline CI/CD, déploiement automatisé et monitoring de drift. Projet réalisé dans le cadre de la formation **AI Engineer** d'OpenClassrooms (alternance).
 
+## 🔗 Lien avec l'étape précédente
+
+Cette version **v1.1.0** prolonge la v1.0.0 (API déployée sur Hugging Face Spaces) avec le **monitoring local de drift** via Streamlit + Evidently, conformément au design-doc de l'étape 8.
+
+L'API publique reste **inchangée côté déploiement** : même image GHCR, même Space HF, mêmes endpoints. Deux ajouts seulement :
+
+- **Instrumentation** : deux colonnes `latency_ms` et `inference_ms` ajoutées à la table `predictions` (migration Alembic), peuplées par un middleware FastAPI et un wrap autour de l'inférence dans `POST /predict`
+- **Dashboard de monitoring local** : 3 pages Streamlit alimentées par la base PostgreSQL Docker locale, qui comparent la distribution des données de référence (parquet du Projet 6) à celle des prédictions courantes
+
+Le dashboard **n'est pas déployé sur Hugging Face Spaces** — c'est un choix volontaire détaillé dans la section [Décisions d'architecture](#-décisions-darchitecture).
+
+---
+
 ---
 
 ## 🎯 Objectif et contexte
@@ -17,7 +30,7 @@ Le projet couvre l'ensemble du cycle MLOps post-entraînement :
 - **conteneurisation Docker** multi-stage avec utilisateur non-root
 - **pipeline CI/CD** GitHub Actions avec validation, build, registry et déploiement
 - **déploiement automatique** sur Hugging Face Spaces via GHCR
-- **monitoring de drift** avec Streamlit et Evidently (étape 8 — à venir)
+- **monitoring de drift** avec Streamlit et Evidently (table `predictions` instrumentée, dashboard 3 pages, drift Evidently sur features et sorties modèle)
 
 ---
 
@@ -79,8 +92,8 @@ flowchart TB
 
     subgraph HF["🤗 Hugging Face Spaces (Docker Space)"]
         direction TB
-        API["⚡ FastAPI + Uvicorn<br/>port 8000<br/>GET / · GET /health · POST /predict · GET /docs"]
-        Predictor["🧠 Predictor<br/>(XGBoost.pkl)"]
+        API["⚡ FastAPI + Uvicorn<br/>port 8000<br/>+ middleware latence (v1.1.0)<br/>+ wrap inférence (v1.1.0)"]
+        Predictor["🧠 Predictor<br/>(xgboost_champion.pkl)"]
         ORM["🗄️ SQLAlchemy + Alembic"]
         DB["💾 SQLite éphémère<br/>(fail-open)"]
         API --> Predictor
@@ -90,12 +103,11 @@ flowchart TB
 
     subgraph CICD["🔁 GitHub Actions"]
         direction TB
-        CI["✅ Workflow CI<br/>ruff + pytest"]
+        CI["✅ Workflow CI<br/>ruff + pytest (74 tests)"]
         CD["🚀 Workflow CD<br/>validate → build → push → deploy"]
     end
 
-    GHCR["📦 GHCR (Container Registry)<br/>ghcr.io/isab-bot/projet8-api<br/>tags : :latest + :sha-&lt;commit&gt;"]
-
+    GHCR["📦 GHCR Registry<br/>ghcr.io/isab-bot/projet8-api<br/>tags : :latest + :sha-&lt;commit&gt;"]
     Repo["🐙 Repo GitHub<br/>Isab-bot/Projet_8<br/>(source de vérité)"]
 
     Client -- "HTTPS" --> API
@@ -110,6 +122,7 @@ flowchart TB
     class Client,Repo external
     class HF,CICD,GHCR internal
 ```
+
 ---
 
 ## 🛠️ Stack technique
@@ -131,7 +144,7 @@ flowchart TB
 | Tests | pytest 9 + pytest-cov 7 + httpx |
 | Linting | ruff |
 | Gestionnaire de paquets | UV (Astral, PEP 735 dependency-groups) |
-| Monitoring (étape 8 à venir) | Streamlit + Evidently |
+| Monitoring | Streamlit + Evidently 0.7.21 + PyArrow 24.0 |
 
 ---
 
@@ -194,7 +207,7 @@ docker compose -f docker/docker-compose.yml down -v
 
 ## 🧪 Qualité et tests
 
-Le projet est instrumenté avec **42 tests pytest** (unitaires + intégration) couvrant la logique métier, la persistance et le contrat HTTP. La couverture globale est de **99 %**, exécution en ~3 secondes en local et ~26 secondes en CI.
+Le projet est instrumenté avec **74 tests pytest** (unitaires + intégration) couvrant la logique métier, la persistance, le contrat HTTP, l'instrumentation de latence/inférence et les helpers de monitoring (mapping SHAP, parsing Evidently). La couverture globale du code applicatif (hors UI Streamlit) est de **99 %**. Exécution en ~12 secondes en local et ~30 secondes en CI.Le projet est instrumenté avec **74 tests pytest** (unitaires + intégration) couvrant la logique métier, la persistance, le contrat HTTP, l'instrumentation de latence/inférence et les helpers de monitoring (mapping SHAP, parsing Evidently). La couverture globale du code applicatif (hors UI Streamlit) est de **99 %**. Exécution en ~12 secondes en local et ~30 secondes en CI.
 
 ### Lancer les tests en local
 
@@ -215,8 +228,9 @@ uv run pytest --cov --cov-report=html
 
 ### Stratégie de tests
 
-- **Unitaires** (25 tests) : logique pure isolée par des mocks (Predictor, naming, service DB)
-- **Intégration** (17 tests) : `TestClient` FastAPI avec vrai modèle XGBoost chargé, SQLite de test pour vérifier la persistance bout-en-bout
+- **Unitaires** (52 tests) : logique pure isolée par des mocks (Predictor, naming, service DB, mapping SHAP, parsing Evidently)
+- **Intégration** (22 tests) : `TestClient` FastAPI avec vrai modèle XGBoost chargé, SQLite de test pour vérifier la persistance bout-en-bout ; les tests d'instrumentation valident que `latency_ms` et `inference_ms` sont peuplées après chaque appel
+- **Stratégie monitoring** : seules les fonctions pures sont testées (stratégie β du design-doc §5.2). Les pages Streamlit elles-mêmes sont validées visuellement, pas via pytest, car ce sont des couches UI sans logique métier complexe.
 
 ### Points verrouillés par tests
 
@@ -297,6 +311,7 @@ flowchart LR
     class CD,Image,Push,Rebuild build
     class Running result
 ```
+
 ### Déclenchement manuel
 
 Pour redéployer la même image (par exemple après un rollback HF), ou pour déboguer :
@@ -316,6 +331,134 @@ Trois niveaux possibles, du plus rapide au plus structurel :
 
 ---
 
+## 🔍 Monitoring de drift (étape 8)
+
+Le dashboard de monitoring est une application **Streamlit locale** qui compare les données de référence (issues du training Projet 6) aux prédictions accumulées en base par l'API. Il répond aux 3 questions clés du monitoring ML : *le modèle voit-il les mêmes données qu'à l'entraînement ?*, *son temps de réponse reste-t-il stable ?*, *ses sorties dérivent-elles ?*.
+
+### Vue d'ensemble
+
+```mermaid
+flowchart LR
+    Ref["📄 reference_data.parquet<br/>(10 000 obs, Projet 6)"]
+    Sim["⚙️ simulate_production.py<br/>(3 000 requêtes,<br/>drift artificiel injecté)"]
+    API["⚡ API FastAPI<br/>(local Docker)"]
+    DB[("💾 PostgreSQL<br/>localhost:5433")]
+    Streamlit["📊 Streamlit dashboard<br/>3 pages"]
+    Evidently["🔬 Evidently 0.7.21<br/>(K-S + Z-test)"]
+
+    Sim -->|POST /predict<br/>3000 fois| API
+    API -->|INSERT| DB
+    Ref -->|read_parquet| Streamlit
+    DB -->|SELECT| Streamlit
+    Streamlit --> Evidently
+    Evidently --> Streamlit
+
+    classDef data fill:#1e3a5f,stroke:#3b82f6,color:#fff
+    classDef code fill:#1e3a2f,stroke:#10b981,color:#fff
+    classDef tool fill:#3a1e5f,stroke:#a855f7,color:#fff
+    class Ref,DB data
+    class Sim,API,Streamlit code
+    class Evidently tool
+```
+
+### Les 3 pages du dashboard
+
+| Page | Contenu |
+|---|---|
+| **Métriques API** | Taux d'acceptation, distribution des scores avec ligne de seuil, percentiles de latence et de temps d'inférence (p50/p95/p99) |
+| **Drift Evidently** | Résumé global (X/N features drift), drift détaillé sur les top 5 features SHAP, drift de `prediction_proba`, rapport HTML Evidently complet dans des expanders |
+| **Données de production** | KPI globaux (total, instrumentées, dernière prédiction), aperçu interactif de la table `predictions` avec slider 10→100 lignes et multi-select des colonnes |
+
+### Lancer le dashboard en local
+
+Prérequis : la stack Docker (`API + Postgres`) doit tourner. Voir [Démarrage rapide en local](#-démarrage-rapide-en-local).
+
+```powershell
+# 1. (Si la table predictions est vide) Simuler de la production avec drift artificiel
+uv run python scripts/simulate_production.py
+
+# 2. Lancer Streamlit
+$env:PYTHONPATH = (Get-Location).Path
+uv run streamlit run monitoring/streamlit_app.py
+```
+
+Le dashboard s'ouvre sur http://localhost:8501 avec une page d'accueil + 3 pages accessibles via la sidebar.
+
+### Aperçu des autres pages du dashboard
+
+**Page Métriques API** : taux d'acceptation, distribution des scores prédits avec ligne de seuil, et percentiles de latence et d'inférence.
+
+![Page Métriques API](docs/screenshots/streamlit_metriques_api.png)
+
+**Page Drift Evidently** : résumé global (X/N features drift), détail sur le top 5 SHAP, drift de `prediction_proba`, et rapports HTML complets dans des expanders.
+
+![Page Drift Evidently](docs/screenshots/streamlit_drift_evidently.png)
+
+### Comment interpréter le drift
+
+Evidently compare chaque feature entre référence et production via un test statistique :
+
+- **Features numériques** : test de **Kolmogorov-Smirnov** sur la distribution
+- **Features catégorielles** : test **Z** sur les proportions
+
+Pour chaque feature, on récupère une **p-value**. La convention retenue est `p < 0.05 → drift détecté` (défaut Evidently). Interpréter prudemment :
+
+- Le drift sur un grand nombre de features peut traduire un **désalignement preprocessing training/serving** plutôt qu'une vraie dérive métier
+- Un cas typique observé sur ce projet : la feature `DAYS_EMPLOYED` est flaggée en drift alors que ce n'est pas une vraie dérive — c'est le preprocessing du Projet 6 (transformation `-x/365` + traitement des anomalies `365243 → 0`) qui n'est appliqué que côté référence et pas côté simulation production. **C'est exactement le genre d'anomalie qu'un monitoring doit révéler.**
+
+### Données simulées et drift artificiel
+
+Le script `scripts/simulate_production.py` rejoue **3000 requêtes** vers l'API à partir d'un échantillon de `df_test_final.parquet` (48 744 obs disponibles, seed fixée à 42). Pour rendre le drift visible, le script injecte un drift contrôlé sur **3 des 5 features SHAP top** :
+
+| Feature | Transformation |
+|---|---|
+| `EXT_SOURCE_2` | Multiplication × 0.85 (baisse de score sociodémographique) |
+| `EXT_SOURCE_3` | Bruit gaussien `N(0, 0.05)` clippé sur [0, 1] |
+| `DAYS_EMPLOYED` | Shift additif `-1` (l'unité est l'année) |
+
+Le drift est ainsi reproductible et permet de valider que le pipeline de monitoring détecte effectivement ce qu'il doit détecter.
+
+### Stockage des prédictions
+
+### Stockage des prédictions
+
+Les captures ci-dessous montrent l'état de la table `predictions` après une simulation complète : schéma (extrait `\d predictions` sous `psql`), données stockées, et même table vue depuis le dashboard Streamlit.
+
+**Schéma de la table — colonnes techniques et premières features métier**
+
+![Schéma de la table predictions (haut)](docs/screenshots/sql_schema_psql_01.png)
+
+On voit ici les colonnes techniques (`id`, `request_id`, `timestamp`, `model_version`, `threshold`, `prediction_proba`, `prediction`) avec leurs types et contraintes `NOT NULL`. Les défauts `CURRENT_TIMESTAMP` et `nextval('predictions_id_seq')` garantissent un horodatage et un identifiant uniques pour chaque insertion.
+
+**Schéma de la table — fin du schéma + index**
+
+![Schéma de la table predictions (bas)](docs/screenshots/sql_schema_psql_02.png)
+
+On voit ici les dernières colonnes d'agrégation (notamment celles renommées `_lambda` côté SQL), les colonnes d'instrumentation `latency_ms` et `inference_ms` ajoutées à l'étape 8, et les 4 index : clé primaire `predictions_pkey`, contrainte d'unicité sur `request_id`, et index secondaires sur `model_version` et `timestamp` (utilisés par les requêtes du dashboard).
+
+**Échantillon des données stockées**
+
+![Données dans la table predictions](docs/screenshots/sql_data_psql.png)
+
+Cinq prédictions récentes affichées via `SELECT ... ORDER BY timestamp DESC LIMIT 5`. Chaque ligne contient l'identifiant unique, la timestamp UTC, la décision (`prediction`), la probabilité prédite, le seuil de décision appliqué et les deux mesures d'instrumentation.
+
+**Même table vue depuis le dashboard Streamlit**
+
+![Page Données de production](docs/screenshots/streamlit_donnees_production.png)
+
+### Évolutions possibles (hors scope étape 8)
+
+Volontairement non implémentées pour cadrer le périmètre, mais identifiées dans le design-doc §2.3 comme axes d'amélioration :
+
+- **Ratio temps d'inférence / latence totale** : diagnostic *where-time-goes* (combien de temps passé hors modèle)
+- **Volume de prédictions par fenêtre temporelle** : nécessite un échelonnement des `timestamp` lors de la simulation
+- **Taux d'erreur API** : nécessite de revenir sur la politique fail-open (la lever conditionnellement pour comptabiliser les erreurs sans casser le service)
+- **Performance métier réelle** : nécessite des labels de production (non disponibles en environnement portfolio)
+- **Fairness / biais par sous-population** : très pertinent en credit scoring (variables protégées comme `CODE_GENDER`) mais hors scope formation étape 8
+
+---
+
+
 ## 🧭 Décisions d'architecture
 
 Les choix structurants du projet sont documentés ici pour faciliter la lecture du code et préparer la soutenance.
@@ -326,7 +469,7 @@ L'API supporte les deux backends via la variable d'environnement `DATABASE_URL`.
 
 ### SQLite éphémère sur HF Spaces (assumé)
 
-La SQLite est réinitialisée à chaque redémarrage du Space HF. C'est un choix volontaire pour un projet portfolio gratuit : pas de coût d'hébergement, fallback automatique déjà testé. Pour le monitoring de drift (étape 8), la stratégie sera ajustée — soit en activant le Persistent Storage HF (payant), soit en utilisant un Postgres managé externe (gratuit jusqu'à un certain seuil).
+La SQLite est réinitialisée à chaque redémarrage du Space HF. C'est un choix volontaire pour un projet portfolio gratuit : pas de coût d'hébergement, fallback automatique déjà testé. Pour l'étape 8 (monitoring de drift), la décision retenue a été de **garder le dashboard en local seul** (pas de 2ème Space HF déployé), alimenté par la base PostgreSQL Docker locale. Cette approche évite à la fois le coût du Persistent Storage HF et la complexité d'une DB managée externe, tout en restant représentative d'un usage MLOps réel (le monitoring tourne typiquement séparé de l'API).
 
 ### Politique fail-open sur la persistance
 
@@ -342,6 +485,7 @@ L'image finale est buildée en deux étapes : un stage `builder` basé sur l'ima
 
 ### User non-root UID 1000
 
+
 Le container tourne en tant qu'utilisateur `appuser` (UID 1000) pour respecter la convention HF Spaces et appliquer le principe du moindre privilège. Le dossier `/app/data/` (pour la SQLite éphémère) est créé en root pendant le build puis chown à `appuser`, parce que SQLite refuse de créer une base dans un dossier inexistant.
 
 ### UV `dependency-groups` (PEP 735)
@@ -349,7 +493,7 @@ Le container tourne en tant qu'utilisateur `appuser` (UID 1000) pour respecter l
 Les dépendances sont organisées en trois ensembles distincts :
 - `[project] dependencies` : 12 paquets de runtime API (FastAPI, SQLAlchemy, xgboost, etc.)
 - `[dependency-groups] dev` : pytest, pytest-cov, httpx, ruff — activé par défaut par `uv sync`
-- `[dependency-groups] monitoring` : streamlit, evidently, plotly — non activé par défaut, à demander explicitement via `--group monitoring`
+- `[dependency-groups] monitoring` : streamlit, evidently 0.7.21, plotly, pyarrow 24.0 — non activé par défaut, à demander explicitement via `--group monitoring`. Activé en CI pour pouvoir exécuter les tests de monitoring sans mock d'Evidently.
 
 Cette organisation permet de produire une image Docker minimale (`uv sync --frozen --no-dev --no-group monitoring`) et de préparer une seconde image dédiée au monitoring à l'étape 8.
 
@@ -430,30 +574,36 @@ flowchart LR
     class Utilitaires config
     class Runtime runtime
 ```
+
 ---
 
 ## 📊 Livrables OpenClassrooms
 
-- [x] API FastAPI fonctionnelle (endpoints `/`, `/health`, `/predict`, `/docs`)
-- [x] Tests unitaires et d'intégration (42 tests, couverture 99 %)
+-- [x] API FastAPI fonctionnelle (endpoints `/`, `/health`, `/predict`, `/docs`)
+- [x] Tests unitaires et d'intégration (74 tests, couverture 99 % du code applicatif)
 - [x] Dockerfile multi-stage
 - [x] Stockage des prédictions (PostgreSQL en dev, SQLite en prod HF)
 - [x] Pipeline CI GitHub Actions (ruff + pytest sur push/PR `main`/`develop`)
 - [x] Pipeline CD GitHub Actions (build & push GHCR, déploiement HF auto sur `main`)
 - [x] Déploiement Hugging Face Spaces (image publique, API accessible)
 - [x] Documentation README (ce fichier)
-- [ ] Dashboard de monitoring (drift, latence, scores) — **étape 8 à venir**
-- [ ] Optimisation performance (taille image, démarrage) — **étape 9 à venir**
+- [x] Instrumentation API : middleware de latence, mesure du temps d'inférence, persistance en DB (`latency_ms`, `inference_ms`)
+- [x] Dashboard de monitoring 3 pages (Métriques API, Drift Evidently, Données de production)
+- [x] Drift Evidently : global sur 324 features, top 5 SHAP détaillé, sortie modèle `prediction_proba`
+- [x] Script de simulation de production avec drift artificiel reproductible (seed=42, N=3000)
+- [ ] Optimisation modèle (compétence OpenClassrooms identifiée a posteriori) — **étape 9 à venir, v1.2.0**
 - [ ] Documentation utilisateur étendue (MkDocs) — **étape 10 à venir**
 
 ---
 
 ## 👤 Auteur
 
-**Isabelle **
-AI Engineer en alternance — formation OpenClassrooms
+Isabelle
 
-Projet réalisé dans le cadre du parcours *AI Engineer*, étape 8 : *Confirmez vos compétences en MLOps*. Le modèle source provient du Projet 6 (*Initiez-vous au MLOps*) du même parcours.
+Projet réalisé dans le cadre du parcours *AI Engineer*. Le modèle source provient du Projet 6 (*Initiez-vous au MLOps*) du même parcours. Versions livrées :
+
+- **v1.0.0** — API REST déployée, pipeline CI/CD, conteneurisation (étape 7)
+- **v1.1.0** — Instrumentation + dashboard de monitoring de drift (étape 8, ce livrable)
 
 Repo GitHub : https://github.com/Isab-bot/Projet_8
 
