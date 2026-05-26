@@ -52,7 +52,7 @@ def warmup(payload: dict) -> None:
     for i in range(N_WARMUP):
         r = requests.post(f"{API_URL}/predict", json=payload, timeout=TIMEOUT_S)
         r.raise_for_status()
-    print(f"      Warm-up terminé.")
+    print("      Warm-up terminé.")
 
 
 def profile_start() -> None:

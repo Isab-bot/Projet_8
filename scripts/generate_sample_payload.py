@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 REPO_ROOT = Path(__file__).parent.parent
 PARQUET_PATH = REPO_ROOT / "data" / "raw" / "df_test_final.parquet"
 OUTPUT_PATH = REPO_ROOT / "tests" / "data" / "sample_payload.json"
