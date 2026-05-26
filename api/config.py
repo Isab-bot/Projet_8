@@ -34,3 +34,12 @@ DEFAULT_SQLITE_PATH = PROJECT_ROOT / "data" / "predictions.db"
 DEFAULT_DATABASE_URL = f"sqlite:///{DEFAULT_SQLITE_PATH.as_posix()}"
 
 DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+
+# --- Profiling (étape 9 — optimisation modèle) ---
+# Activation conditionnelle des endpoints /profile/start et /profile/stop.
+# Désactivé par défaut : les endpoints ne sont PAS montés sur l'app si false.
+# Activation locale uniquement, jamais en prod HF Spaces.
+ENABLE_PROFILING = os.getenv("ENABLE_PROFILING", "false").lower() == "true"
+
+# Répertoire de sortie pour les fichiers .prof
+PROFILE_OUTPUT_DIR = PROJECT_ROOT / "reports"

@@ -19,7 +19,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from alembic import command as alembic_command
-from api.config import API_DESCRIPTION, API_TITLE, API_VERSION
+from api.config import API_DESCRIPTION, API_TITLE, API_VERSION, ENABLE_PROFILING
 from api.database import get_db
 from api.db_service import log_prediction
 from api.exceptions import (
@@ -30,6 +30,7 @@ from api.exceptions import (
 )
 from api.middleware import register_latency_middleware
 from api.predictor import ModelNotLoadedError, Predictor
+from api.profiling import register_profiling
 from api.schemas import HealthResponse, PredictionInput, PredictionOutput
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,9 @@ register_exception_handlers(app)
 # Enregistrement des middlewares d'instrumentation
 register_latency_middleware(app)
 
+# Profiling conditionnel (étape 9 — optimisation modèle)
+if ENABLE_PROFILING:
+    register_profiling(app)
 
 # --- Dépendances -----------------------------------------------------------
 
