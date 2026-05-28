@@ -29,8 +29,8 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from onnxmltools.convert.common.data_types import FloatTensorType
 from onnxmltools.convert import convert_xgboost
+from onnxmltools.convert.common.data_types import FloatTensorType
 
 # Suppress XGBoost serialization warning (compat ascendante, inoffensif)
 warnings.filterwarnings(
@@ -72,7 +72,7 @@ def load_pipeline() -> object:
 
 def extract_and_save_preprocessor(pipeline) -> object:
     """Extrait le ColumnTransformer du pipeline et le sérialise."""
-    print(f"[2/5] Extraction du preprocessor...")
+    print("[2/5] Extraction du preprocessor...")
     preprocessor = pipeline.named_steps["preprocessor"]
     print(f"      Type : {type(preprocessor).__name__}")
 
@@ -91,7 +91,7 @@ def measure_input_shape(preprocessor) -> int:
     récupère le nombre de colonnes du résultat. C'est le N qui sera la shape
     d'entrée du modèle ONNX.
     """
-    print(f"[3/5] Mesure de la shape d'entrée du XGBClassifier...")
+    print("[3/5] Mesure de la shape d'entrée du XGBClassifier...")
     if not SAMPLE_PARQUET.exists():
         print(f"[ERREUR] Échantillon introuvable : {SAMPLE_PARQUET}")
         sys.exit(1)
@@ -128,7 +128,7 @@ def convert_xgb_to_onnx(pipeline, n_features: int) -> bytes:
 
 def save_onnx(onnx_model) -> None:
     """Sérialise le modèle ONNX sur disque."""
-    print(f"[5/5] Sauvegarde du modèle ONNX...")
+    print("[5/5] Sauvegarde du modèle ONNX...")
     TARGET_ONNX.parent.mkdir(parents=True, exist_ok=True)
     with TARGET_ONNX.open("wb") as f:
         f.write(onnx_model.SerializeToString())

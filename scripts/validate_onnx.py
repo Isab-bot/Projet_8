@@ -52,11 +52,11 @@ DECISION_THRESHOLD = 0.33381930539322036  # Q5 du design-doc / Projet 6
 
 def load_artifacts():
     """Charge les 3 artefacts nécessaires : pipeline source, preprocessor, ONNX."""
-    print(f"[1/4] Chargement des artefacts...")
+    print("[1/4] Chargement des artefacts...")
     for path in (SOURCE_PIPELINE, SOURCE_PREPROCESSOR, SOURCE_ONNX):
         if not path.exists():
             print(f"[ERREUR] Artefact introuvable : {path}")
-            print(f"        Lance d'abord scripts/convert_to_onnx.py.")
+            print("        Lance d'abord scripts/convert_to_onnx.py.")
             sys.exit(1)
 
     pipeline = joblib.load(SOURCE_PIPELINE)
@@ -86,7 +86,7 @@ def load_sample() -> pd.DataFrame:
 
 def predict_reference(pipeline, sample: pd.DataFrame) -> np.ndarray:
     """Chaîne A : pipeline complet (joblib) -> predict_proba."""
-    print(f"[3/4] Prédictions de référence (pipeline pickle)...")
+    print("[3/4] Prédictions de référence (pipeline pickle)...")
     proba = pipeline.predict_proba(sample)[:, 1]
     print(f"      Probabilités calculées : {len(proba)} valeurs")
     print(f"      Range : [{proba.min():.6f}, {proba.max():.6f}]")
@@ -95,7 +95,7 @@ def predict_reference(pipeline, sample: pd.DataFrame) -> np.ndarray:
 
 def predict_onnx(preprocessor, onnx_session, sample: pd.DataFrame) -> np.ndarray:
     """Chaîne B : preprocessor sklearn -> ONNX session."""
-    print(f"[3/4] Prédictions ONNX (preprocessor sklearn + ONNX Runtime)...")
+    print("[3/4] Prédictions ONNX (preprocessor sklearn + ONNX Runtime)...")
 
     # Étape 1 : transform via preprocessor sklearn
     X_transformed = preprocessor.transform(sample)
@@ -126,7 +126,7 @@ def predict_onnx(preprocessor, onnx_session, sample: pd.DataFrame) -> np.ndarray
 
 def compare(proba_ref: np.ndarray, proba_onnx: np.ndarray) -> dict:
     """Compare les deux séries de probabilités et de décisions."""
-    print(f"[4/4] Comparaison référence vs ONNX...")
+    print("[4/4] Comparaison référence vs ONNX...")
 
     # Différences absolues sur les probas
     diff = np.abs(proba_ref - proba_onnx)
