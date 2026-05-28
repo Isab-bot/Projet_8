@@ -11,5 +11,34 @@
     "test_f3_score": 0.5583
   },
   "decision_threshold": 0.33381930539322036,
-  "extracted_at": "2026-05-01T09:28:13.664370+00:00"
+  "extracted_at": "2026-05-01T09:28:13.664370+00:00",
+  "optimization": {
+    "stage": "Projet_8_etape_9",
+    "strategy": "ONNX conversion of XGBClassifier only (preprocessor stays sklearn)",
+    "artifacts": {
+      "preprocessor": "models/preprocessor.pkl",
+      "onnx_model": "models/xgboost_classifier.onnx",
+      "source_pipeline": "models/xgboost_champion.pkl"
+    },
+    "onnx": {
+      "converter": "onnxmltools",
+      "target_opset": 15,
+      "n_features_raw": 326,
+      "n_features_transformed": 336
+    },
+    "validation": {
+      "n_samples": 100,
+      "random_state": 42,
+      "proba_tolerance": 1e-05,
+      "proba_max_diff": 2.68e-07,
+      "decision_accuracy": 1.0,
+      "result": "PASS"
+    },
+    "backends_available": [
+      "joblib",
+      "onnx"
+    ],
+    "default_backend": "joblib",
+    "converted_at": "2026-05-28T09:15:55.748718+00:00"
+  }
 }

@@ -1446,6 +1446,7 @@ dependencies = [
     { name = "fastapi", extra = ["standard"] },
     { name = "joblib" },
     { name = "numpy" },
+    { name = "onnxruntime" },
     { name = "pandas" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
@@ -1472,7 +1473,6 @@ monitoring = [
 onnx = [
     { name = "onnx" },
     { name = "onnxmltools" },
-    { name = "onnxruntime" },
 ]
 
 [package.metadata]
@@ -1481,6 +1481,7 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.121.1" },
     { name = "joblib", specifier = ">=1.5.2" },
     { name = "numpy", specifier = ">=2.0.0" },
+    { name = "onnxruntime", specifier = ">=1.20.0" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2.12.4" },
@@ -1507,7 +1508,6 @@ monitoring = [
 onnx = [
     { name = "onnx", specifier = ">=1.17.0" },
     { name = "onnxmltools", specifier = ">=1.13.0" },
-    { name = "onnxruntime", specifier = ">=1.20.0" },
 ]
 
 [[package]]
