@@ -97,3 +97,4 @@ Reprise_Projet8_etape_9V2.md
 # Profils cProfile bruts (binaires, lourds)
 reports/*.prof
 reports/*.txt
+reports/*.json
